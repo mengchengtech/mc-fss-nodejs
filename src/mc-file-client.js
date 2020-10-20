@@ -453,7 +453,7 @@ class RpcResponseStream extends PassThrough {
  * @property {string} bucketName
  * @property {string} accessKeyId
  * @property {string} accessKeySecret
- * @property {string} publicEndpoint
+ * @property {string} publicEndPoint
  * @property {string} privateEndPoint
  */
 

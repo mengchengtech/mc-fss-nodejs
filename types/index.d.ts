@@ -2,7 +2,7 @@ interface MCFileClientConfig {
   bucketName: string
   accessKeyId: string
   accessKeySecret: string
-  publicEndpoint: string
+  publicEndPoint: string
   privateEndPoint: string
 }
 
