@@ -13,7 +13,7 @@ export class MCFileClient {
   put (
     key: string,
     fileName: string,
-    data: string | Buffer | WritableStream,
+    data: string | Buffer | ReadableStream,
     metadata: Object,
     contentType: string
   ): Promise<void>
