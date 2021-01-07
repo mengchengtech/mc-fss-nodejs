@@ -22,5 +22,15 @@ export class MCFileClient {
   copy (toKey: string, fromKey: string): Promise<void>
   generateObjectUrl (key: string): string
   signatureUrl (key: string, option: any): string
+  /**
+   * 返回文件的headers信息(api命名参考ali-oss)
+   * @param key
+   */
   getObjectMeta (key: string): Object
+  /**
+   * 获取文件的自定义meta信息(api命名参考ali-oss)
+   *
+   * @param key 文件的key
+   */
+  head (key: string): Object
 }

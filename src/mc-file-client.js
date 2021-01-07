@@ -146,6 +146,10 @@ module.exports = class MCFileClient {
     }
   }
 
+  /**
+   *
+   * @param {string} key
+   */
   async generateObjectUrl (key) {
     const path = $posix.join(this._config.prefix, this._config.bucketName, key)
     const endPoint = this._config.publicEndPoint
@@ -154,6 +158,11 @@ module.exports = class MCFileClient {
     return objectUrl
   }
 
+  /**
+   *
+   * @param {string} key
+   * @param {any} option
+   */
   async signatureUrl (key, option) {
     option.expires = Math.round(Date.now() / 1000) + option.expires
     option.headers = option.headers || {}
@@ -179,6 +188,44 @@ module.exports = class MCFileClient {
     return signedUrl
   }
 
+  /**
+   *
+   * @param {string} key
+   */
+  async head (key) {
+    const signedData = this._signedData({
+      method: METHOD_HEAD,
+      key
+    })
+
+    try {
+      const req = $request({
+        url: signedData.targetUrl,
+        method: METHOD_HEAD,
+        headers: signedData.headers
+      })
+      const readable = await getResponseStream(req)
+      const meta = {}
+      Object.keys(readable.headers).forEach(k => {
+        if (k.indexOf('x-fss-meta-') === 0) {
+          meta[k.substring(11)] = readable.headers[k]
+        }
+      })
+      return meta
+    } catch (err) {
+      const res = err.response
+      if (res) {
+        err.status = res.statusCode
+        resolveError(err)
+      }
+      throw err
+    }
+  }
+
+  /**
+   *
+   * @param {string} key
+   */
   async getObjectMeta (key) {
     const signedData = this._signedData({
       method: METHOD_HEAD,
