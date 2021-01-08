@@ -197,7 +197,6 @@ module.exports = class MCFileClient {
       method: METHOD_HEAD,
       key
     })
-
     try {
       const req = $request({
         url: signedData.targetUrl,
@@ -205,13 +204,18 @@ module.exports = class MCFileClient {
         headers: signedData.headers
       })
       const readable = await getResponseStream(req)
-      const meta = {}
+      const result = {
+        meta: {},
+        headers: readable.headers,
+        status: readable.statusCode
+      }
+
       Object.keys(readable.headers).forEach(k => {
         if (k.indexOf('x-fss-meta-') === 0) {
-          meta[k.substring(11)] = readable.headers[k]
+          result.meta[k.substring(11)] = readable.headers[k]
         }
       })
-      return meta
+      return result
     } catch (err) {
       const res = err.response
       if (res) {

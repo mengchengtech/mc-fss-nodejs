@@ -26,11 +26,17 @@ export class MCFileClient {
    * 返回文件的headers信息(api命名参考ali-oss)
    * @param key
    */
-  getObjectMeta (key: string): Object
+  getObjectMeta (key: string): Promise<Object>
   /**
    * 获取文件的自定义meta信息(api命名参考ali-oss)
    *
    * @param key 文件的key
    */
-  head (key: string): Object
+  head (key: string): Promise<FileMetaInfo>
+}
+
+declare interface FileMetaInfo {
+  headers: Object
+  status: number
+  meta: Object
 }
