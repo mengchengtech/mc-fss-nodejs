@@ -2,6 +2,7 @@ const { URL } = require('url')
 const path = require('path')
 const { Readable, PassThrough } = require('stream')
 const crypto = require('crypto')
+const contentDisposition = require('content-disposition')
 
 // 使用原始的api，async方式不支持流式读写
 const $request = require('request')
@@ -69,7 +70,7 @@ module.exports = class MCFileClient {
     }
 
     if (fileName) {
-      headers['content-disposition'] = encodeURIComponent(rawName)
+      headers['content-disposition'] = contentDisposition(rawName)
     }
 
     if (data instanceof Buffer) {
