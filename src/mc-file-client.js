@@ -447,7 +447,7 @@ function resolveError (err) {
   const rawError = {}
 
   $('Error *').each((index, node) => {
-    rawError[node.name] = cheerio(node).text()
+    rawError[node.name] = cheerio.load(node).text()
   })
   err.code = rawError.Code
   err.desc = rawError.Message
