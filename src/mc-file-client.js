@@ -151,7 +151,7 @@ module.exports = class MCFileClient {
    *
    * @param {string} key
    */
-  async generateObjectUrl (key) {
+  generateObjectUrl (key) {
     const path = $posix.join(this._config.prefix, this._config.bucketName, key)
     const endPoint = this._config.publicEndPoint
     const url = new URL(path, endPoint)

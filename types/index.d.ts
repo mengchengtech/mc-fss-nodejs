@@ -20,7 +20,7 @@ export class MCFileClient {
 
   delete (key: string): Promise<void>
   copy (toKey: string, fromKey: string): Promise<void>
-  generateObjectUrl (key: string): Promise<string>
+  generateObjectUrl (key: string): string
   signatureUrl (key: string, option: any): string
   /**
    * 返回文件的headers信息(api命名参考ali-oss)
