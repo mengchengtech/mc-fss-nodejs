@@ -164,7 +164,7 @@ module.exports = class MCFileClient {
    * @param {string} key
    * @param {any} option
    */
-  async signatureUrl (key, option) {
+  signatureUrl (key, option) {
     option.expires = Math.round(Date.now() / 1000) + option.expires
     option.headers = option.headers || {}
     const resource = this._getResource(key)
