@@ -502,6 +502,7 @@ class RpcResponseStream extends PassThrough {
 
 /**
  * @typedef {object} MCFileClientConfig
+ * @property {bool} internal
  * @property {string} bucketName
  * @property {string} accessKeyId
  * @property {string} accessKeySecret

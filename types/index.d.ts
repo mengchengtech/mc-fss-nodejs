@@ -1,4 +1,5 @@
 interface MCFileClientConfig {
+  internal: boolean
   bucketName: string
   accessKeyId: string
   accessKeySecret: string
