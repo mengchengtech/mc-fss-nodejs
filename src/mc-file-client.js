@@ -57,10 +57,10 @@ module.exports = class MCFileClient {
   }
 
   async put (key, fileName, data, metadata, contentType) {
-    const fss = {}
+    const fssMetadata = {}
     if (metadata) {
       for (const key in metadata) {
-        fss['x-fss-meta-' + key] = metadata[key]
+        fssMetadata['x-fss-meta-' + key] = metadata[key]
       }
     }
 
@@ -81,7 +81,7 @@ module.exports = class MCFileClient {
       method: METHOD_PUT,
       key,
       headers,
-      fss
+      metadata: fssMetadata
     })
 
     headers = Object.assign(headers, signedData.headers)
@@ -129,7 +129,7 @@ module.exports = class MCFileClient {
     const signedData = this._signedData({
       method: METHOD_PUT,
       key: toKey,
-      fss: {
+      metadata: {
         'x-fss-copy-source': fromKey
       }
     })
@@ -264,7 +264,7 @@ module.exports = class MCFileClient {
     const method = option.method
     const key = option.key
     const headers = option.headers || {}
-    const fss = option.fss || {}
+    const metadata = option.metadata || {}
     // 拼成服务端需要的地址
     const path = $posix.join(this._config.prefix, this._config.bucketName, key)
     const url = new URL(path, this._endpoint)
@@ -273,10 +273,10 @@ module.exports = class MCFileClient {
     headers.date = new Date().toGMTString()
 
     const userMetadata = {}
-    for (const name in fss) {
+    for (const name in metadata) {
       // 全部转换为小写
       const lowerName = name.toLowerCase()
-      userMetadata[lowerName] = fss[name]
+      userMetadata[lowerName] = metadata[name]
     }
     Object.assign(headers, userMetadata)
 
