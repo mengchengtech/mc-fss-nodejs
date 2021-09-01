@@ -10,11 +10,11 @@ interface MCFileClientConfig {
 export class MCFileClient {
   constructor (config: MCFileClientConfig)
   readonly endpoint: URL
-  get (key: string): Promise<ReadableStream>
+  get (key: string): Promise<NodeJS.ReadableStream>
   put (
     key: string,
     fileName: string,
-    data: string | Buffer | ReadableStream,
+    data: string | Buffer | NodeJS.ReadableStream,
     metadata: Object,
     contentType: string
   ): Promise<void>

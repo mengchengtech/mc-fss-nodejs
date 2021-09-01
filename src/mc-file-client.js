@@ -29,7 +29,7 @@ module.exports = class MCFileClient {
   /**
    *
    * @param {string} key
-   * @param {Promise<ReadableStream>}
+   * @param {Promise<NodeJS.ReadableStream>}
    */
   async get (key) {
     const signedData = this._signedData({
