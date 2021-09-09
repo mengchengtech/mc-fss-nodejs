@@ -452,8 +452,6 @@ function resolveError (err) {
   err.code = rawError.Code
   err.desc = rawError.Message
   err.handled = true
-
-  throw Error(`调用私有云文件服务时发生错误. ${err.message}`)
 }
 
 function parseResponseStreamError (res, body) {
