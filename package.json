@@ -20,11 +20,12 @@
     "url": "https://github.com/mengchengtech/mc-fss-nodejs.git"
   },
   "dependencies": {
-    "cheerio": "^1.0.0-rc.9",
     "content-disposition": "^0.5.3",
     "request": "^2.88.0",
     "request-promise-native": "^1.0.5",
-    "uuid": "^3.3.2"
+    "uuid": "^3.3.2",
+    "xmldom": "^0.6.0",
+    "xpath": "^0.0.32"
   },
   "peerDependencies": {},
   "devDependencies": {

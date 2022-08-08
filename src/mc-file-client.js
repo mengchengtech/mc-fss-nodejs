@@ -1,5 +1,7 @@
 const { URL } = require('url')
 const path = require('path')
+const xpath = require('xpath')
+const { DOMParser } = require('xmldom')
 const { Readable, PassThrough } = require('stream')
 const crypto = require('crypto')
 const contentDisposition = require('content-disposition')
@@ -442,13 +444,16 @@ function resolveError (err) {
   }
 
   // xml格式
-  const cheerio = require('cheerio')
-  const $ = cheerio.load(body, { xmlMode: true, normalizeWhitespace: true })
+  const doc = new DOMParser().parseFromString(body)
   const rawError = {}
 
-  $('Error *').each((index, node) => {
-    rawError[node.name] = cheerio.load(node).text()
-  })
+  /** @type {Element[]} */
+  // @ts-ignore
+  const nodes = xpath.select('/Error/*', doc)
+  for (const node of nodes) {
+    // @ts-ignore
+    rawError[node.name] = node.textContent
+  }
   err.code = rawError.Code
   err.desc = rawError.Message
   err.handled = true
