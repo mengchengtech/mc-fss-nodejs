@@ -7,14 +7,15 @@ const crypto = require('crypto')
 const contentDisposition = require('content-disposition')
 
 // 使用原始的api，async方式不支持流式读写
-const $request = require('request')
-const $asyncRequest = require('request-promise-native')
+const axiosStatic = require('axios')
 const $posix = require('path').posix
 
 const METHOD_PUT = 'PUT'
 const METHOD_GET = 'GET'
 const METHOD_HEAD = 'HEAD'
 const METHOD_DELETE = 'DELETE'
+
+const $axios = new axiosStatic.Axios(axiosStatic.default.defaults)
 
 module.exports = class MCFileClient {
   constructor (config) {
@@ -40,13 +41,14 @@ module.exports = class MCFileClient {
     })
 
     try {
-      const req = $request({
+      const res = await $axios.request({
         url: signedData.targetUrl,
         method: METHOD_GET,
-        headers: signedData.headers
+        headers: signedData.headers,
+        responseType: 'stream'
       })
-      const readable = await getResponseStream(req)
-      return readable
+
+      return res.data
     } catch (err) {
       const res = err.response
       if (res) {
@@ -90,12 +92,13 @@ module.exports = class MCFileClient {
 
     if (data instanceof Buffer || data instanceof Readable) {
       try {
-        await $asyncRequest({
+        const res = await $axios.request({
           url: signedData.targetUrl,
           method: METHOD_PUT,
           headers: signedData.headers,
-          body: data
+          data
         })
+        console.log(res.status)
       } catch (err) {
         resolveAsyncRequestError(err)
         err.message = err.message + ` --> [upload] [${key}]`
@@ -115,7 +118,7 @@ module.exports = class MCFileClient {
     })
 
     try {
-      await $asyncRequest({
+      await $axios.request({
         url: signedData.targetUrl,
         method: METHOD_DELETE,
         headers: signedData.headers
@@ -137,7 +140,7 @@ module.exports = class MCFileClient {
     })
 
     try {
-      await $asyncRequest({
+      await $axios.request({
         url: signedData.targetUrl,
         method: METHOD_PUT,
         headers: signedData.headers
@@ -201,21 +204,20 @@ module.exports = class MCFileClient {
       key
     })
     try {
-      const req = $request({
+      const res = await $axios.request({
         url: signedData.targetUrl,
         method: METHOD_HEAD,
         headers: signedData.headers
       })
-      const readable = await getResponseStream(req)
       const result = {
         meta: {},
-        headers: readable.headers,
-        status: readable.statusCode
+        headers: res.headers,
+        status: res.status
       }
 
-      Object.keys(readable.headers).forEach(k => {
+      Object.keys(res.headers).forEach(k => {
         if (k.indexOf('x-fss-meta-') === 0) {
-          result.meta[k.substring(11)] = readable.headers[k]
+          result.meta[k.substring(11)] = res.headers[k]
         }
       })
       return result
@@ -240,13 +242,13 @@ module.exports = class MCFileClient {
     })
 
     try {
-      const req = $request({
+      const res = await $axios.request({
         url: signedData.targetUrl,
         method: METHOD_HEAD,
         headers: signedData.headers
       })
-      const readable = await getResponseStream(req)
-      return readable.headers
+
+      return res.headers
     } catch (err) {
       const res = err.response
       if (res) {
@@ -371,17 +373,6 @@ async function getResponseStream (req) {
   // 收到请求后状态大于500的认为失败
   const stream = await new Promise((resolve, reject) => {
     req.on('response', res => {
-      const status = res.statusCode
-      if (status < 400) {
-        // 由于request作为输出流只实现了pipe方法，没有真正实现全部的ReadableStream接口
-        // 这里使用Transform流中转一下，变成一个标准的Readable流
-        const transfer = new RpcResponseStream()
-        Object.assign(transfer.headers, res.headers)
-        transfer.statusCode = status
-        req.pipe(transfer)
-        return resolve(transfer)
-      }
-
       // status >= 400, 有错误发生
       // http响应的状态码大于等于400时，说明响应中包含错误信息
       // 根据响应的'content-type'决定是转换成字符串还是json对象
@@ -411,24 +402,24 @@ async function getResponseStream (req) {
 function resolveAsyncRequestError (err) {
   const res = err.response
   if (res) {
-    let body = res.body
-    if (body) {
+    let content = res.data
+    if (content) {
       /**
        * @type {string}
        */
       const type = res.headers['content-type']
       // 转成json格式
-      if (typeof body === 'string' && type.includes('json')) {
+      if (typeof content === 'string' && type.includes('json')) {
         try {
-          body = JSON.parse(body)
+          content = JSON.parse(content)
         } catch (err) {
           // 什么也不做
-          body = {
+          content = {
             code: 'json_format_error',
-            desc: body
+            desc: content
           }
         }
-        res.body = body
+        res.body = content
       }
     }
 
@@ -438,13 +429,13 @@ function resolveAsyncRequestError (err) {
 }
 
 function resolveError (err) {
-  const body = err.response.body
-  if (!body) {
+  const content = err.response.data
+  if (!content) {
     return
   }
 
   // xml格式
-  const doc = new DOMParser().parseFromString(body)
+  const doc = new DOMParser().parseFromString(content)
   const rawError = {}
 
   /** @type {Element[]} */
@@ -452,8 +443,9 @@ function resolveError (err) {
   const nodes = xpath.select('/Error/*', doc)
   for (const node of nodes) {
     // @ts-ignore
-    rawError[node.name] = node.textContent
+    rawError[node.localName] = node.textContent
   }
+  err.message = content
   err.code = rawError.Code
   err.desc = rawError.Message
   err.handled = true
@@ -486,21 +478,6 @@ function parseResponseStreamError (res, body) {
   err.status = status
 
   return err
-}
-
-class RpcResponseStream extends PassThrough {
-  constructor () {
-    super()
-    this._headers = {}
-    this.statusCode = 404
-  }
-
-  /**
-   * 存储response响应返回的headers
-   */
-  get headers () {
-    return this._headers
-  }
 }
 
 /**
