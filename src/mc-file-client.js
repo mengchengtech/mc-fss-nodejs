@@ -15,7 +15,7 @@ const METHOD_GET = 'GET'
 const METHOD_HEAD = 'HEAD'
 const METHOD_DELETE = 'DELETE'
 
-const $axios = new axiosStatic.Axios(axiosStatic.default.defaults)
+const $axios = new axiosStatic.Axios({})
 
 module.exports = class MCFileClient {
   constructor (config) {
