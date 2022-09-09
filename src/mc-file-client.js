@@ -2,7 +2,7 @@ const { URL } = require('url')
 const path = require('path')
 const xpath = require('xpath')
 const { DOMParser } = require('xmldom')
-const { Readable, PassThrough } = require('stream')
+const { Readable } = require('stream')
 const crypto = require('crypto')
 const contentDisposition = require('content-disposition')
 
@@ -15,7 +15,11 @@ const METHOD_GET = 'GET'
 const METHOD_HEAD = 'HEAD'
 const METHOD_DELETE = 'DELETE'
 
-const $axios = new axiosStatic.Axios({})
+const $axios = new axiosStatic.Axios({
+  validateStatus (status) {
+    return status >= 200 && status < 300
+  }
+})
 
 module.exports = class MCFileClient {
   constructor (config) {
