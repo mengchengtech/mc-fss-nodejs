@@ -372,37 +372,6 @@ function buildCanonicalizedResource (resourcePath, parameters) {
   return canonicalizedResource
 }
 
-async function getResponseStream (req) {
-  // 流式处理hystrix只用计录状态
-  // 收到请求后状态大于500的认为失败
-  const stream = await new Promise((resolve, reject) => {
-    req.on('response', res => {
-      // status >= 400, 有错误发生
-      // http响应的状态码大于等于400时，说明响应中包含错误信息
-      // 根据响应的'content-type'决定是转换成字符串还是json对象
-      // 此处hack了request模块
-      // 分析request的代码后得知：
-      // 设置callback属性可以在后续代码中激活readResponseBody方法，同时还可以触发有body值的 'complete'事件
-      // 如果不设置callback属性则会在最后触发不包含body的'complete'事件
-      req.callback = () => null
-      const type = res.headers['content-type']
-      if (type.includes('json')) {
-        // body解析为json
-        req.json(true)
-      } else {
-        // body解析为字符串
-        req.encoding = 'utf8'
-      }
-
-      req.on('complete', (res, body) => {
-        const err = parseResponseStreamError(res, body)
-        return reject(err)
-      })
-    })
-  })
-  return stream
-}
-
 function resolveAsyncRequestError (err) {
   const res = err.response
   if (res) {
@@ -453,35 +422,6 @@ function resolveError (err) {
   err.code = rawError.Code
   err.desc = rawError.Message
   err.handled = true
-}
-
-function parseResponseStreamError (res, body) {
-  let err
-  if (body && typeof body === 'object') {
-    if (body.code && body.desc) {
-      err = new Error(body.desc)
-      err.code = body.code
-      err.desc = body.desc
-    }
-  }
-
-  const status = res.statusCode
-  if (!err) {
-    err = new Error()
-    err.response = res
-    err.message = `调用服务发生错误[${status}]`
-  }
-
-  // 客户端错 / 服务端错
-  if (status < 500) {
-    err.name = 'HTTP_CLIENT_ERROR'
-    err.handleed = true
-  } else {
-    err.name = 'HTTP_SERVER_ERROR'
-  }
-  err.status = status
-
-  return err
 }
 
 /**
