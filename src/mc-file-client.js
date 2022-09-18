@@ -54,11 +54,7 @@ module.exports = class MCFileClient {
 
       return res.data
     } catch (err) {
-      const res = err.response
-      if (res) {
-        err.status = res.statusCode
-        resolveError(err)
-      }
+      resolveAsyncRequestError(err)
       err.message = err.message + ` --> [download] [${key}]`
       throw err
     }
@@ -226,11 +222,7 @@ module.exports = class MCFileClient {
       })
       return result
     } catch (err) {
-      const res = err.response
-      if (res) {
-        err.status = res.statusCode
-        resolveError(err)
-      }
+      resolveAsyncRequestError(err)
       throw err
     }
   }
@@ -254,11 +246,7 @@ module.exports = class MCFileClient {
 
       return res.headers
     } catch (err) {
-      const res = err.response
-      if (res) {
-        err.status = res.statusCode
-        resolveError(err)
-      }
+      resolveAsyncRequestError(err)
       throw err
     }
   }
@@ -372,36 +360,24 @@ function buildCanonicalizedResource (resourcePath, parameters) {
   return canonicalizedResource
 }
 
+/**
+ *
+ * @param {axiosStatic.AxiosError} err
+ */
 function resolveAsyncRequestError (err) {
   const res = err.response
-  if (res) {
-    let content = res.data
-    if (content) {
-      /**
-       * @type {string}
-       */
-      const type = res.headers['content-type']
-      // 转成json格式
-      if (typeof content === 'string' && type.includes('json')) {
-        try {
-          content = JSON.parse(content)
-        } catch (err) {
-          // 什么也不做
-          content = {
-            code: 'json_format_error',
-            desc: content
-          }
-        }
-        res.body = content
-      }
-    }
-
-    resolveError(err)
-    err.status = res.statusCode
+  if (!res) {
+    return
   }
-}
+  /**
+   * @type {string}
+   */
+  const type = res.headers['content-type']
+  // 转成json格式
+  if (!type.includes('xml')) {
+    return
+  }
 
-function resolveError (err) {
   const content = err.response.data
   if (!content) {
     return
