@@ -1,7 +1,7 @@
 const { URL } = require('url')
 const path = require('path')
 const xpath = require('xpath')
-const { DOMParser } = require('xmldom')
+const { DOMParser } = require('@xmldom/xmldom')
 const { Readable } = require('stream')
 const crypto = require('crypto')
 const contentDisposition = require('content-disposition')
