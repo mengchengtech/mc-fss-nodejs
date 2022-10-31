@@ -98,7 +98,6 @@ module.exports = class MCFileClient {
           headers: signedData.headers,
           data
         })
-        console.log(res.status)
       } catch (err) {
         resolveAsyncRequestError(err)
         err.message = err.message + ` --> [upload] [${key}]`
