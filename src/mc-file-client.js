@@ -54,7 +54,25 @@ module.exports = class MCFileClient {
 
       return res.data
     } catch (err) {
-      resolveAsyncRequestError(err)
+      // 调用时设置了返回结果 'stream'，出错时也是以'stream'的格式返回，这里需要预处理一下
+      if (axiosStatic.default.isAxiosError(err) && err.response) {
+        /** @type {import('http').IncomingMessage} */
+        const httpRes = err.response.data
+        /** @type {Buffer} */
+        const data = await new Promise((resolve, reject) => {
+          const buffers = []
+          httpRes
+            .on('data', chunk => {
+              buffers.push(chunk)
+            })
+            .on('end', () => {
+              return resolve(Buffer.concat(buffers))
+            })
+            .on('error', reject)
+        })
+        err.response.data = data.toString('utf-8')
+        resolveAsyncRequestError(err)
+      }
       err.message = err.message + ` --> [download] [${key}]`
       throw err
     }
