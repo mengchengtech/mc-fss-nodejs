@@ -160,7 +160,7 @@ module.exports = class MCFileClient {
       await $axios.request({
         url: signedData.targetUrl,
         method: METHOD_PUT,
-        headers: signedData.headers
+        headers: { 'content-type': '', ...signedData.headers }
       })
     } catch (err) {
       resolveAsyncRequestError(err)
