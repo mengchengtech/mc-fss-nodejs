@@ -22,11 +22,30 @@ const $axios = new axiosStatic.Axios({
 })
 
 module.exports = class MCFileClient {
+  /**
+   *
+   * @param {import('../types').MCFileClientConfig} config
+   */
   constructor (config) {
     this._config = config
-    this._endpoint = config.internal
-      ? new URL(config.privateEndPoint)
-      : new URL(config.publicEndPoint)
+    if ('server' in config) {
+      const scheme = config.useSSL ? 'https' : 'http'
+      let host = ''
+      if (typeof config.server === 'string') {
+        host = config.server
+      } else {
+        host = config.internal ? config.server.internal : config.server.external
+      }
+      const url = new URL(`${scheme}://${host}`)
+      if (config.port) {
+        url.port = String(config.port)
+      }
+      this._endpoint = url
+    } else {
+      this._endpoint = config.internal
+        ? new URL(config.privateEndPoint)
+        : new URL(config.publicEndPoint)
+    }
   }
 
   get endpoint () {
@@ -36,7 +55,7 @@ module.exports = class MCFileClient {
   /**
    *
    * @param {string} key
-   * @param {Promise<NodeJS.ReadableStream>}
+   * @returns {Promise<NodeJS.ReadableStream>}
    */
   async get (key) {
     const signedData = this._signedData({
@@ -56,8 +75,9 @@ module.exports = class MCFileClient {
     } catch (err) {
       // 调用时设置了返回结果 'stream'，出错时也是以'stream'的格式返回，这里需要预处理一下
       if (axiosStatic.default.isAxiosError(err) && err.response) {
-        /** @type {import('http').IncomingMessage} */
-        const httpRes = err.response.data
+        const httpRes = /** @type {import('http').IncomingMessage} */ (
+          err.response.data
+        )
         /** @type {Buffer} */
         const data = await new Promise((resolve, reject) => {
           const buffers = []
@@ -79,6 +99,7 @@ module.exports = class MCFileClient {
   }
 
   async put (key, fileName, data, metadata, contentType) {
+    /** @type {Record<string, string>} */
     const fssMetadata = {}
     if (metadata) {
       for (const key in metadata) {
@@ -131,7 +152,7 @@ module.exports = class MCFileClient {
       method: METHOD_DELETE,
       key,
       // request库在非GET请求时会强制生成content-length 头
-      headers: { 'content-length': 0 }
+      headers: { 'content-length': '0' }
     })
 
     try {
@@ -174,9 +195,12 @@ module.exports = class MCFileClient {
    * @param {string} key
    */
   generateObjectUrl (key) {
-    const path = $posix.join(this._config.prefix, this._config.bucketName, key)
-    const endPoint = this._config.publicEndPoint
-    const url = new URL(path, endPoint)
+    const path = $posix.join(
+      this._config.prefixPath,
+      this._config.bucketName,
+      key
+    )
+    const url = new URL(path, this._endpoint)
     const objectUrl = url.toString()
     return objectUrl
   }
@@ -193,9 +217,12 @@ module.exports = class MCFileClient {
     const sign = this._signature(resource, option)
 
     // 默认为给外部使用，所以指定用外网地址
-    const endPoint = this._config.publicEndPoint
-    const path = $posix.join(this._config.prefix, this._config.bucketName, key)
-    const url = new URL(path, endPoint)
+    const path = $posix.join(
+      this._config.prefixPath,
+      this._config.bucketName,
+      key
+    )
+    const url = new URL(path, this._endpoint)
 
     const params = url.searchParams
     params.append('FSSAccessKeyId', this._config.accessKeyId)
@@ -279,11 +306,15 @@ module.exports = class MCFileClient {
     const headers = option.headers || {}
     const metadata = option.metadata || {}
     // 拼成服务端需要的地址
-    const path = $posix.join(this._config.prefix, this._config.bucketName, key)
+    const path = $posix.join(
+      this._config.prefixPath,
+      this._config.bucketName,
+      key
+    )
     const url = new URL(path, this._endpoint)
 
     const resource = this._getResource(key)
-    headers.date = new Date().toGMTString()
+    headers.date = new Date().toUTCString()
 
     const userMetadata = {}
     for (const name in metadata) {
@@ -418,18 +449,8 @@ function resolveAsyncRequestError (err) {
 }
 
 /**
- * @typedef {object} MCFileClientConfig
- * @property {bool} internal
- * @property {string} bucketName
- * @property {string} accessKeyId
- * @property {string} accessKeySecret
- * @property {string} publicEndPoint
- * @property {string} privateEndPoint
- */
-
-/**
  * @typedef {object} SignDataOption
- * @property {'GET' | 'PUT' | 'DELETE'} method
+ * @property {'GET' | 'PUT' | 'DELETE' | 'HEAD'} method
  * @property {string} key
  * @property {{[name: string]: string}} [headers = {}]
  * @property {{[name: string]: string}} [metadata = {}]
