@@ -5,6 +5,7 @@ const { DOMParser } = require('@xmldom/xmldom')
 const { Readable } = require('stream')
 const crypto = require('crypto')
 const contentDisposition = require('content-disposition')
+const log = require('@log4js-node/log4js-api').getLogger('node.fss.client')
 
 // 使用原始的api，async方式不支持流式读写
 const axiosStatic = require('axios')
@@ -30,18 +31,18 @@ module.exports = class MCFileClient {
     this._config = config
     if ('server' in config) {
       const scheme = config.useSSL ? 'https' : 'http'
-      let host = ''
-      if (typeof config.server === 'string') {
-        host = config.server
-      } else {
-        host = config.internal ? config.server.internal : config.server.external
-      }
-      const url = new URL(`${scheme}://${host}`)
+      const url = new URL(`${scheme}://${config.server}`)
       if (config.port) {
         url.port = String(config.port)
       }
+      if (config.prefixPath) {
+        url.pathname = config.prefixPath
+      }
       this._endpoint = url
     } else {
+      log.warn(
+        '配置项 privateEndPoint, publicEndPoint, internal 已标记为过时，请改用新的配置方式 (server, useSSL?, port?, prefixPath?)'
+      )
       this._endpoint = config.internal
         ? new URL(config.privateEndPoint)
         : new URL(config.publicEndPoint)
@@ -98,6 +99,14 @@ module.exports = class MCFileClient {
     }
   }
 
+  /**
+   *
+   * @param {string} key
+   * @param {string} fileName
+   * @param {string | Buffer | NodeJS.ReadableStream} data
+   * @param {Record<string, string>} metadata
+   * @param {string} contentType
+   */
   async put (key, fileName, data, metadata, contentType) {
     /** @type {Record<string, string>} */
     const fssMetadata = {}
@@ -147,6 +156,10 @@ module.exports = class MCFileClient {
     }
   }
 
+  /**
+   *
+   * @param {string} key
+   */
   async delete (key) {
     const signedData = this._signedData({
       method: METHOD_DELETE,
@@ -196,7 +209,7 @@ module.exports = class MCFileClient {
    */
   generateObjectUrl (key) {
     const path = $posix.join(
-      this._config.prefixPath,
+      this._endpoint.pathname,
       this._config.bucketName,
       key
     )
@@ -208,7 +221,7 @@ module.exports = class MCFileClient {
   /**
    *
    * @param {string} key
-   * @param {any} option
+   * @param {import('../types').SignatureUrlOption} option
    */
   signatureUrl (key, option) {
     option.expires = Math.round(Date.now() / 1000) + option.expires
@@ -218,7 +231,7 @@ module.exports = class MCFileClient {
 
     // 默认为给外部使用，所以指定用外网地址
     const path = $posix.join(
-      this._config.prefixPath,
+      this._endpoint.pathname,
       this._config.bucketName,
       key
     )
@@ -226,7 +239,7 @@ module.exports = class MCFileClient {
 
     const params = url.searchParams
     params.append('FSSAccessKeyId', this._config.accessKeyId)
-    params.append('Expires', option.expires)
+    params.append('Expires', String(option.expires))
     params.append('Signature', sign.signature)
 
     for (const key in sign.subResource) {
@@ -307,7 +320,7 @@ module.exports = class MCFileClient {
     const metadata = option.metadata || {}
     // 拼成服务端需要的地址
     const path = $posix.join(
-      this._config.prefixPath,
+      this._endpoint.pathname,
       this._config.bucketName,
       key
     )
@@ -316,6 +329,7 @@ module.exports = class MCFileClient {
     const resource = this._getResource(key)
     headers.date = new Date().toUTCString()
 
+    /** @type {Record<string, string>} */
     const userMetadata = {}
     for (const name in metadata) {
       // 全部转换为小写
@@ -345,10 +359,21 @@ module.exports = class MCFileClient {
     }
   }
 
+  /**
+   *
+   * @param {string} key
+   * @returns {string}
+   */
   _getResource (key) {
     return $posix.join('/', this._config.bucketName, key)
   }
 
+  /**
+   *
+   * @param {string} resource
+   * @param {import('../types').SignatureUrlOption} option
+   * @returns
+   */
   _signature (resource, option) {
     const headers = option.headers || {}
     const signableValues = [option.method.toUpperCase()]
@@ -356,8 +381,15 @@ module.exports = class MCFileClient {
     signableValues.push(md5)
 
     signableValues.push(headers['content-type'])
-    signableValues.push(option.expires || headers.date)
+    if (option.expires) {
+      signableValues.push(String(option.expires))
+    } else {
+      signableValues.push(headers.date)
+    }
 
+    /**
+     * @type {Record<string, string>}
+     */
     const subResource = {}
     if (option.process) {
       subResource['x-fss-process'] = option.process
@@ -392,6 +424,12 @@ module.exports = class MCFileClient {
   }
 }
 
+/**
+ *
+ * @param {string} resourcePath
+ * @param {Record<string, string>} parameters
+ * @returns {string}
+ */
 function buildCanonicalizedResource (resourcePath, parameters) {
   let canonicalizedResource = `${resourcePath}`
   const list = []
@@ -442,16 +480,9 @@ function resolveAsyncRequestError (err) {
     // @ts-ignore
     rawError[node.localName] = node.textContent
   }
-  err.message = content
-  err.code = rawError.Code
-  err.desc = rawError.Message
-  err.handled = true
+  const e = /** @type {any} */ (err)
+  e.message = content
+  e.code = rawError.Code
+  e.desc = rawError.Message
+  e.handled = true
 }
-
-/**
- * @typedef {object} SignDataOption
- * @property {'GET' | 'PUT' | 'DELETE' | 'HEAD'} method
- * @property {string} key
- * @property {{[name: string]: string}} [headers = {}]
- * @property {{[name: string]: string}} [metadata = {}]
- */
