@@ -55,7 +55,7 @@ export class MCFileClient {
   ): Promise<void>
 
   delete(key: string): Promise<void>
-  copy(toKey: string, fromKey: string): Promise<void>
+  copy(to: string, from: string, bucket?: string): Promise<void>
   generateObjectUrl(key: string): string
   signatureUrl(key: string, option: SignatureUrlOption): string
   /**

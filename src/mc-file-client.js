@@ -181,12 +181,46 @@ module.exports = class MCFileClient {
     }
   }
 
-  async copy (toKey, fromKey) {
+  /**
+   *
+   * @param {string} to
+   * @param {string} from
+   * @param {string} [bucket]
+   */
+  async copy (to, from, bucket) {
+    // 拼成服务端需要的地址
+    const path = $posix.join(this._endpoint.pathname, 'apiversion')
+    const url = new URL(path, this._endpoint)
+
+    // 默认使用旧的格式
+    let source = from
+    let version = '1'
+    try {
+      const res = await $axios.request({
+        url: url.toString(),
+        method: METHOD_HEAD
+      })
+      version = res.headers['x-fss-server-version']
+      const major = Number(version.split('.')[0])
+      // 服务端支持跨bucket复制
+      if (major > 1) {
+        if (!bucket) {
+          bucket = this._config.bucketName
+        }
+        source = `${bucket}/${from}`
+      }
+    } catch (ex) {
+      // 等于405表示不支持带bucket的复制
+      if (ex.status !== 405) {
+        throw ex
+      }
+    }
     const signedData = this._signedData({
       method: METHOD_PUT,
-      key: toKey,
+      key: to,
       metadata: {
-        'x-fss-copy-source': fromKey
+        'x-fss-client-version': '2',
+        'x-fss-copy-source': source
       }
     })
 
@@ -198,7 +232,7 @@ module.exports = class MCFileClient {
       })
     } catch (err) {
       resolveAsyncRequestError(err)
-      err.message = err.message + ` --> [copy] [${fromKey}] to [${toKey}]`
+      err.message += ` --> [copy] [${bucket}/${from}] to [${this._config.bucketName}/${to}]`
       throw err
     }
   }
